@@ -9,6 +9,7 @@ https://sopel.chat
 from __future__ import unicode_literals, absolute_import, print_function, division
 
 import copy
+import re
 
 from lxml import etree
 import requests
@@ -37,6 +38,7 @@ def say_result(bot, item):
 NHENTAI_GALLERY_BASE = 'https://nhentai.net/g/'
 NHENTAI_GALLERY_PATTERN = NHENTAI_GALLERY_BASE + r'(\d+)/?'
 NHENTAI_GALLERY_TEMPLATE = NHENTAI_GALLERY_BASE + '{id}/'
+NHENTAI_ID_PATTERN = r'^\d+$'
 NHENTAI_SITENAME = 'nhentai'
 
 
@@ -56,6 +58,10 @@ def nhentai_info(bot, trigger, id_=None):
             return module.NOLIMIT
         else:  # make sure we give a link to the gallery when commanded
             link = True
+    if not re.match(NHENTAI_ID_PATTERN, id_):
+        if link:  # only reply when commanded; fail silently for bad links
+            bot.reply("Sorry, '{}' doesn't look like a valid gallery ID.".format(id_))
+        return module.NOLIMIT
 
 
     # Now the real "fun" begins
