@@ -9,12 +9,14 @@ https://sopel.chat
 from __future__ import unicode_literals, absolute_import, print_function, division
 
 import copy
+from datetime import datetime
 import re
 
 from lxml import etree
 import requests
 
-from sopel import formatting, module
+from sopel import formatting, module, tools
+import sopel.tools.time
 
 
 ITEM_TEMPLATE = {
@@ -28,11 +30,15 @@ ITEM_TEMPLATE = {
 def say_result(bot, item):
     if item['link']:
         item['link'] = ' | ' + item['link']
-    if item['tags']:
-        item['tags'] = ', '.join(item['tags'])
-    else:
-        item['tags'] = '(no tags found)'
-    bot.say('[{site}] {title} | Tagged: {tags}{link}'.format(**item))
+    if item['uploaded']:
+        item['uploaded'] = ' | Uploaded: ' + item['uploaded']
+
+    tags = item['tags']
+    for tag, value in tags.items():
+        tags[tag] = ' | {}: {}'.format(tag.title(), value)
+    item['tags'] = ''.join(tags.values())
+
+    bot.say('[{site}] {title}{tags}{uploaded}{link}'.format(**item))
 
 
 NHENTAI_GALLERY_BASE = 'https://nhentai.net/g/'
@@ -91,11 +97,45 @@ def nhentai_info(bot, trigger, id_=None):
     item['title'] = page.xpath(
         '//div[@id="info"]/h1[contains(concat(" ", normalize-space(@class), " "), " title ")]'
         '/span[contains(concat(" ", normalize-space(@class), " "), " pretty ")]')[0].text
-    item['tags'] = page.xpath(
+    item['tags'] = {}
+
+    # for some reason, nhentai just marks empty tag containers as "hidden"
+    # instead of omitting them from the markup like a sane app would do
+    # I figure it's more efficient to exclude them from this XPath expression
+    # than waste another call to xpath() later on a useless element
+    meta_items = page.xpath(
         '//section[@id="tags"]'
-        '/div[not(contains(text(), "Pages"))]'
-        '/span[contains(concat(" ", normalize-space(@class), " "), " tags ")]'
-        '//a[contains(concat(" ", normalize-space(@class), " "), " tag ")]'
-        '//span[contains(concat(" ", normalize-space(@class), " "), " name ")]/text()')
+        '/div[contains(concat(" ", normalize-space(@class), " "), " tag-container ")]'
+        '[not(contains(concat(" ", normalize-space(@class), " "), " hidden "))]'
+    )
+    for meta_item in meta_items:
+        key = meta_item.text.strip().replace(':', '').lower()
+        if key == 'uploaded':
+            time = meta_item.xpath('.//time')[0]
+            timestamp = time.get('datetime')
+            if timestamp[-3] == ':':
+                # nhentai includes a : in the datetime offset, which
+                # python's datetime library doesn't understand, so it
+                # has to be removed manually
+                timestamp = timestamp[:-3] + timestamp[-2:]
+            item['uploaded'] = '{absolute} ({relative})'.format(
+                relative=time.text.strip(),
+                absolute=tools.time.format_time(
+                    db=bot.db,
+                    config=bot.config,
+                    zone='UTC',
+                    nick=trigger.nick,
+                    channel=trigger.sender,
+                    time=datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%f%z'),
+                ),
+            )
+        elif key in ['artists', 'categories', 'characters', 'languages', 'pages', 'parodies', 'tags']:
+            tags = meta_item.xpath(
+                './span[contains(concat(" ", normalize-space(@class), " "), " tags ")]'
+                '//a[contains(concat(" ", normalize-space(@class), " "), " tag ")]'
+                '//span[contains(concat(" ", normalize-space(@class), " "), " name ")]/text()'
+            )
+            if tags:
+                item['tags'][key] = ', '.join(tags)
 
     say_result(bot, item)
