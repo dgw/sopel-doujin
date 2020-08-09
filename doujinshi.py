@@ -1,7 +1,7 @@
 # coding=utf-8
 """
 doujinshi.py - Sopel doujinshi info plugin
-Copyright 2019 dgw
+Copyright 2020 dgw
 Licensed under the Eiffel Forum License 2
 
 https://sopel.chat
@@ -87,8 +87,15 @@ def nhentai_info(bot, trigger, id_=None):
     item['site'] = NHENTAI_SITENAME
     if link:
         item['link'] = url
-    
-    item['title'] = page.xpath('/html/body/div[2]/div[1]/div[2]/div/h1')[0].text
-    item['tags'] = [el.text.strip() for el in page.xpath('//*[@id="tags"]/div[3]/span')[0]]
+
+    item['title'] = page.xpath(
+        '//div[@id="info"]/h1[contains(concat(" ", normalize-space(@class), " "), " title ")]'
+        '/span[contains(concat(" ", normalize-space(@class), " "), " pretty ")]')[0].text
+    item['tags'] = page.xpath(
+        '//section[@id="tags"]'
+        '/div[not(contains(text(), "Pages"))]'
+        '/span[contains(concat(" ", normalize-space(@class), " "), " tags ")]'
+        '//a[contains(concat(" ", normalize-space(@class), " "), " tag ")]'
+        '//span[contains(concat(" ", normalize-space(@class), " "), " name ")]/text()')
 
     say_result(bot, item)
