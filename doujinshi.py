@@ -9,7 +9,7 @@ https://sopel.chat
 from __future__ import unicode_literals, absolute_import, print_function, division
 
 import copy
-from datetime import datetime
+from datetime import datetime, timezone
 import re
 
 from lxml import etree
@@ -118,15 +118,16 @@ def nhentai_info(bot, trigger, id_=None):
                 # python's datetime library doesn't understand, so it
                 # has to be removed manually
                 timestamp = timestamp[:-3] + timestamp[-2:]
+            timestamp = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%f%z')
             item['uploaded'] = '{absolute} ({relative})'.format(
-                relative=time.text.strip(),
+                relative=tools.time.seconds_to_human(datetime.now(timezone.utc) - timestamp),
                 absolute=tools.time.format_time(
                     db=bot.db,
                     config=bot.config,
                     zone='UTC',
                     nick=trigger.nick,
                     channel=trigger.sender,
-                    time=datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%f%z'),
+                    time=timestamp,
                 ),
             )
         elif key in ['artists', 'categories', 'characters', 'languages', 'pages', 'parodies', 'tags']:
