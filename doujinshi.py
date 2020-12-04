@@ -38,7 +38,7 @@ def say_result(bot, item):
         tags[tag] = ' | {}: {}'.format(tag.title(), value)
     item['tags'] = ''.join(tags.values())
 
-    bot.say('[{site}] {title}{tags}{uploaded}{link}'.format(**item))
+    bot.say('[{site}] {title}{link}{tags}{uploaded}'.format(**item))
 
 
 NHENTAI_GALLERY_BASE = 'https://nhentai.net/g/'
