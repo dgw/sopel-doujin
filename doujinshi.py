@@ -119,17 +119,8 @@ def nhentai_info(bot, trigger, id_=None):
                 # has to be removed manually
                 timestamp = timestamp[:-3] + timestamp[-2:]
             timestamp = datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%f%z')
-            item['uploaded'] = '{absolute} ({relative})'.format(
-                relative=tools.time.seconds_to_human(datetime.now(timezone.utc) - timestamp),
-                absolute=tools.time.format_time(
-                    db=bot.db,
-                    config=bot.config,
-                    zone='UTC',
-                    nick=trigger.nick,
-                    channel=trigger.sender,
-                    time=timestamp,
-                ),
-            )
+            item['uploaded'] = tools.time.seconds_to_human(
+                datetime.now(timezone.utc) - timestamp)
         elif key in ['artists', 'categories', 'characters', 'languages', 'pages', 'parodies', 'tags']:
             tags = meta_item.xpath(
                 './span[contains(concat(" ", normalize-space(@class), " "), " tags ")]'
